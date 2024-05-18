@@ -12,9 +12,16 @@
 package com.braintribe.execution.graph.impl;
 
 import static com.braintribe.utils.lcd.CollectionTools2.asList;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.fail;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import com.braintribe.execution.graph.api.ParallelGraphExecution.PgeItemResult;
+import com.braintribe.execution.graph.api.ParallelGraphExecution.PgeResult;
 
 /**
  * @author peter.gazdik
@@ -65,6 +72,42 @@ public abstract class _PgeTestBase {
 	protected static void markChildParent(TestNode child, TestNode parent) {
 		child.parents.add(parent);
 		parent.children.add(child);
+	}
+
+	// Healthy test helpers
+
+	protected void markExecutionTime(TestNode n) {
+		n.timeOfExecution = System.nanoTime();
+	}
+
+	protected synchronized void s_checkCalledJustOnce(TestNode n) {
+		if (n.timeOfExecution != null)
+			fail("Node was processed twice: " + n);
+		n.timeOfExecution = System.nanoTime();
+	}
+
+	protected void assertNoErrorAndSortByTimeOfExecution(PgeResult<TestNode, Boolean> result, List<TestNode> testedNodes) {
+		assertThat(result.hasError()).isFalse();
+		for (PgeItemResult<TestNode, Boolean> itemResult : result.itemResulsts().values())
+			assertThat(itemResult.getError()).isNull();
+
+		assertAllNodesWereExecuted(testedNodes);
+
+		sortNodesByTimeOfExecution(testedNodes);
+	}
+
+	private void assertAllNodesWereExecuted(List<TestNode> testedNodes) {
+		List<String> notProcessedNodes = testedNodes.stream() //
+				.filter(node -> node.timeOfExecution == null) //
+				.map(node -> node.name) //
+				.collect(Collectors.toList());
+
+		if (!notProcessedNodes.isEmpty())
+			fail("Following nodes were not processed: " + notProcessedNodes);
+	}
+
+	private void sortNodesByTimeOfExecution(List<TestNode> testedNodes) {
+		testedNodes.sort(Comparator.comparing(n -> n.timeOfExecution));
 	}
 
 }

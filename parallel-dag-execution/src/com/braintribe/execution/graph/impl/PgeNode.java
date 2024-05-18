@@ -19,7 +19,9 @@ import java.util.Set;
 /**
  * Node in the {@link PgeGraph}.
  * <p>
- * Every node processed before it's parents can be processed. In higher levels the children are called dependencies and the parents dependers.
+ * Every node processed before it's parents can be processed.
+ * <p>
+ * In higher levels the children are called dependencies and the parents dependers.
  * 
  * @see PgeGraph
  * 
@@ -29,6 +31,7 @@ class PgeNode<N> {
 
 	public final N item;
 
+	// parent = depender --> processing is child-first
 	public Set<PgeNode<N>> parents = newLinkedSet();
 
 	public PgeNode(N item) {

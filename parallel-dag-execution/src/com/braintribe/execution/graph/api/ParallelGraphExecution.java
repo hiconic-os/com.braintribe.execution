@@ -36,7 +36,7 @@ public interface ParallelGraphExecution {
 		// Graph edges
 
 		/**
-		 * Configures an "edge function", which for each item i returns all the items which have to be processed first.
+		 * Configures an "edge function", which for each item returns all the items which have to be processed first.
 		 * <p>
 		 * Note that even if the iterable returned by the functions provides the same item multiple times, it is processed only
 		 * once by the parallel executor.
@@ -44,7 +44,7 @@ public interface ParallelGraphExecution {
 		PgeBuilder<N> itemsToProcessFirst(Function<N, Iterable<? extends N>> dependencyResolver);
 
 		/**
-		 * Configures an "edge function", which for each item i returns all the items which cannot be processed first.
+		 * Configures an "edge function", which for each item returns all the items which cannot be processed first.
 		 * <p>
 		 * Note that even if the iterable returned by the functions provides the same item multiple times, it is processed only
 		 * once by the parallel executor.

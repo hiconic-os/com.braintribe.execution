@@ -170,12 +170,6 @@ public class PgeExecutorImpl<N> implements PgeExecutor<N> {
 			threadPoolExecutor.submit(() -> compute(cNode));
 		}
 
-		private synchronized void onComputationEnd() {
-			s_submittedComputations--;
-			if (s_hasError && s_submittedComputations == 0)
-				mainThraed.interrupt();
-		}
-
 		private R compute(ComputationNode<R> cNode) {
 			try {
 				// If there is already an error, we cancel the actual execution
@@ -197,12 +191,6 @@ public class PgeExecutorImpl<N> implements PgeExecutor<N> {
 			}
 		}
 
-		private synchronized void s_onComputationError(PgeExecutorImpl<N>.ComputationNode<R> cNode, Throwable e) {
-			cNode.error = e;
-			cNode.status = PgeItemStatus.failed;
-			s_hasError = true;
-		}
-
 		private void onComputationOk(PgeExecutorImpl<N>.ComputationNode<R> cNode, R result) {
 			cNode.result = result;
 			cNode.status = PgeItemStatus.finished;
@@ -211,6 +199,18 @@ public class PgeExecutorImpl<N> implements PgeExecutor<N> {
 			for (ComputationNode<R> depender : cNode.dependers)
 				if (depender.s_onDependencyResolved(cNode))
 					s_submit(depender);
+		}
+
+		private synchronized void s_onComputationError(PgeExecutorImpl<N>.ComputationNode<R> cNode, Throwable e) {
+			cNode.error = e;
+			cNode.status = PgeItemStatus.failed;
+			s_hasError = true;
+		}
+
+		private synchronized void onComputationEnd() {
+			s_submittedComputations--;
+			if (s_hasError && s_submittedComputations == 0)
+				mainThraed.interrupt();
 		}
 
 		private void waitForComputationToFinish() {

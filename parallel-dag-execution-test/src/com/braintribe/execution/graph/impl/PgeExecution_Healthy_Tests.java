@@ -13,9 +13,7 @@ package com.braintribe.execution.graph.impl;
 
 import static com.braintribe.testing.junit.assertions.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.fail;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -23,7 +21,6 @@ import java.util.stream.IntStream;
 import org.junit.Test;
 
 import com.braintribe.execution.graph.api.ParallelGraphExecution;
-import com.braintribe.execution.graph.api.ParallelGraphExecution.PgeItemResult;
 import com.braintribe.execution.graph.api.ParallelGraphExecution.PgeResult;
 
 /**
@@ -87,45 +84,14 @@ public class PgeExecution_Healthy_Tests extends _PgeTestBase {
 	}
 
 	// helpers
-
-	protected void markExecutionTime(TestNode n) {
-		n.timeOfExecution = System.nanoTime();
-	}
-
-	protected synchronized void s_checkCalledJustOnce(TestNode n) {
-		if (n.timeOfExecution != null)
-			fail("TODO");
-		n.timeOfExecution = System.nanoTime();
-	}
-
 	int assertionIndex = 0;
 
-	protected void assertCorrectOrder(PgeResult<TestNode, Boolean> result) {
-		assertThat(result.hasError()).isFalse();
-		for (PgeItemResult<TestNode, Boolean> itemResult : result.itemResulsts().values())
-			assertThat(itemResult.getError()).isNull();
-
-		assertAllNodesWereExecuted();
-
-		sortNodesByTimeOfExecution();
+	private void assertCorrectOrder(PgeResult<TestNode, Boolean> result) {
+		assertNoErrorAndSortByTimeOfExecution(result, NODES_ALL);
 
 		assertNextNodes(4, "leaf");
 		assertNextNodes(2, "inner");
 		assertNextNodes(1, "root");
-	}
-
-	private void assertAllNodesWereExecuted() {
-		List<String> notProcessedNodes = NODES_ALL.stream() //
-				.filter(node -> node.timeOfExecution == null) //
-				.map(node -> node.name) //
-				.collect(Collectors.toList());
-
-		if (!notProcessedNodes.isEmpty())
-			fail("Following nodes were not processed: " + notProcessedNodes);
-	}
-
-	private void sortNodesByTimeOfExecution() {
-		NODES_ALL.sort(Comparator.comparing(n -> n.timeOfExecution));
 	}
 
 	private void assertNextNodes(int n, String expectedNamePrefix) {

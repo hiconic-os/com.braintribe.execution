@@ -11,6 +11,7 @@
 // ============================================================================
 package com.braintribe.execution.graph.impl;
 
+import static com.braintribe.utils.lcd.CollectionTools2.newIdentitySet;
 import static com.braintribe.utils.lcd.CollectionTools2.newLinkedSet;
 import static com.braintribe.utils.lcd.CollectionTools2.newMap;
 import static com.braintribe.utils.lcd.CollectionTools2.newSet;
@@ -79,18 +80,23 @@ class PgeGraph<N> {
 
 		private void verifyNoCycles() {
 			Set<PgeNode<N>> visited = newLinkedSet();
+			Set<PgeNode<N>> fullyExamined = newIdentitySet();
 
-			visitAll(itemToNode.values(), visited);
+			visitAll(itemToNode.values(), visited, fullyExamined);
 		}
 
-		private void visitAll(Collection<PgeNode<N>> nodes, Set<PgeNode<N>> visited) {
+		private void visitAll(Collection<PgeNode<N>> nodes, Set<PgeNode<N>> visited, Set<PgeNode<N>> fullyExamined) {
 			for (PgeNode<N> node : nodes) {
+				if (fullyExamined.contains(node))
+					continue;
+
 				if (!visited.add(node))
 					throwCycleDetected(node, visited);
 
-				visitAll(node.parents, visited);
+				visitAll(node.parents, visited, fullyExamined);
 
 				visited.remove(node);
+				fullyExamined.add(node);
 			}
 		}
 
