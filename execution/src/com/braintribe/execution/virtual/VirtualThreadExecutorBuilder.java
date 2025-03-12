@@ -15,10 +15,13 @@
 // ============================================================================
 package com.braintribe.execution.virtual;
 
+import java.time.Duration;
+
 public class VirtualThreadExecutorBuilder {
 
 	private Integer concurrency = null;
-	private Boolean waitForTasksToCompleteOnShutdown = null;
+	private boolean interruptThreadsOnShutdown = false;
+	private Duration terminationTimeout;
 	private String threadNamePrefix = null;
 	private Boolean addThreadContextToNdc = null;
 	private String description = null;
@@ -37,9 +40,12 @@ public class VirtualThreadExecutorBuilder {
 		return this;
 	}
 
+	/***
+	 * @deprecated use {@link #interruptThreadsOnShutdown(boolean)} (but with the opposite logical value)
+	 */
+	@Deprecated
 	public VirtualThreadExecutorBuilder waitForTasksToCompleteOnShutdown(boolean waitForTasksToCompleteOnShutdown) {
-		this.waitForTasksToCompleteOnShutdown = waitForTasksToCompleteOnShutdown;
-		return this;
+		return interruptThreadsOnShutdown(!waitForTasksToCompleteOnShutdown);
 	}
 
 	public VirtualThreadExecutorBuilder threadNamePrefix(String threadNamePrefix) {
@@ -62,6 +68,16 @@ public class VirtualThreadExecutorBuilder {
 		return this;
 	}
 
+	public VirtualThreadExecutorBuilder interruptThreadsOnShutdown(boolean interruptThreadsOnShutdown) {
+		this.interruptThreadsOnShutdown = interruptThreadsOnShutdown;
+		return this;
+	}
+
+	public VirtualThreadExecutorBuilder terminationTimeout(Duration terminationTimeout) {
+		this.terminationTimeout = terminationTimeout;
+		return this;
+	}
+	
 	public VirtualThreadExecutor build() {
 		if (concurrency == null) {
 			throw new IllegalArgumentException("Concurrency " + concurrency + " is not set");
@@ -75,18 +91,18 @@ public class VirtualThreadExecutorBuilder {
 	}
 
 	private void applyConfiguration(VirtualThreadExecutor result) {
-		if (waitForTasksToCompleteOnShutdown != null) {
-			result.setWaitForTasksToCompleteOnShutdown(waitForTasksToCompleteOnShutdown);
-		}
-		if (threadNamePrefix != null) {
-			result.setThreadNamePrefix(threadNamePrefix);
-		}
-		if (addThreadContextToNdc != null) {
-			result.setAddThreadContextToNdc(addThreadContextToNdc);
-		}
+		result.setInterruptThreadsOnShutdown(interruptThreadsOnShutdown);
 		result.setDescription(description);
 		result.setEnableMonitoring(monitoring);
 
+		if (threadNamePrefix != null)
+			result.setThreadNamePrefix(threadNamePrefix);
+		if (addThreadContextToNdc != null)
+			result.setAddThreadContextToNdc(addThreadContextToNdc);
+		if (terminationTimeout != null)
+			result.setTerminationTimeout(terminationTimeout);
+
 		result.postConstruct();
 	}
+
 }

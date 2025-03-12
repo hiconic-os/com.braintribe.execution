@@ -48,7 +48,8 @@ public class VirtualThreadExecutor implements ExecutorService, LifecycleAware, M
 	private boolean addThreadContextToNdc = true;
 	private boolean enableMonitoring = true;
 	private String threadNamePrefix = null;
-	private boolean waitForTasksToCompleteOnShutdown = true;
+	private boolean interruptThreadsOnShutdown = false;
+	private Duration terminationTimeout;
 	private boolean constructed = false;
 	private String description = null;
 
@@ -57,7 +58,7 @@ public class VirtualThreadExecutor implements ExecutorService, LifecycleAware, M
 
 	private int concurrency = 4;
 
-	private AtomicInteger tasksPending = new AtomicInteger(0);
+	private final AtomicInteger tasksPending = new AtomicInteger(0);
 	private ExecutorService executor;
 
 	private Semaphore semaphore;
@@ -126,23 +127,7 @@ public class VirtualThreadExecutor implements ExecutorService, LifecycleAware, M
 
 	@Override
 	public void preDestroy() {
-		String identification = getIdentification();
-
-		logger.debug(() -> "Shutting down thread pool " + identification + " (waitForTasksToCompleteOnShutdown: " + waitForTasksToCompleteOnShutdown
-				+ ")");
-		Instant start = NanoClock.INSTANCE.instant();
-
-		try {
-			if (waitForTasksToCompleteOnShutdown) {
-				executor.shutdown();
-			} else {
-				executor.shutdownNow();
-			}
-		} finally {
-			ThreadPoolMonitoring.unregisterThreadPool(threadPoolId);
-
-			logger.debug(() -> "Shutting down thread pool " + identification + " took " + StringTools.prettyPrintDuration(start, true, null));
-		}
+		close();
 	}
 
 	private String getIdentification() {
@@ -170,9 +155,22 @@ public class VirtualThreadExecutor implements ExecutorService, LifecycleAware, M
 	public void setThreadNamePrefix(String threadNamePrefix) {
 		this.threadNamePrefix = threadNamePrefix;
 	}
+
+	/**
+	 * @deprecated use {@link #setInterruptThreadsOnShutdown(boolean)} (but with the opposite logical value)
+	 */
+	@Deprecated
 	@Configurable
 	public void setWaitForTasksToCompleteOnShutdown(boolean waitForTasksToCompleteOnShutdown) {
-		this.waitForTasksToCompleteOnShutdown = waitForTasksToCompleteOnShutdown;
+		setInterruptThreadsOnShutdown(!waitForTasksToCompleteOnShutdown);
+	}
+	@Configurable
+	public void setInterruptThreadsOnShutdown(boolean interruptThreadsOnShutdown) {
+		this.interruptThreadsOnShutdown = interruptThreadsOnShutdown;
+	}
+	@Configurable
+	public void setTerminationTimeout(Duration terminationTimeout) {
+		this.terminationTimeout = terminationTimeout;
 	}
 	@Configurable
 	public void setDescription(String description) {
@@ -309,6 +307,39 @@ public class VirtualThreadExecutor implements ExecutorService, LifecycleAware, M
 
 	@Override
 	public void close() {
-		executor.close();
+		if (executor.isShutdown())
+			return;
+
+		String identification = getIdentification();
+
+		logger.debug(() -> "Shutting down thread pool " + identification + " (interruptThreadsOnShutdown: " + interruptThreadsOnShutdown + ")");
+		Instant start = NanoClock.INSTANCE.instant();
+
+		try {
+			if (interruptThreadsOnShutdown) {
+				executor.shutdownNow();
+			} else {
+				executor.shutdown();
+			}
+
+			if (terminationTimeout != null)
+				try {
+					executor.awaitTermination(terminationTimeout.toMillis(), TimeUnit.MILLISECONDS);
+				} catch (InterruptedException e) {
+					logger.warn(this + " interrupted while waiting for its executor termination", e);
+					throw new RuntimeException("", e);
+				}
+
+		} finally {
+			ThreadPoolMonitoring.unregisterThreadPool(threadPoolId);
+
+			logger.debug(() -> "Shutting down thread pool " + identification + " took " + StringTools.prettyPrintDuration(start, true, null));
+		}
+	}
+
+	@Override
+	public String toString() {
+		String d = description == null ? "no-description" : description;
+		return getClass().getSimpleName() + "(" + d + ")";
 	}
 }
