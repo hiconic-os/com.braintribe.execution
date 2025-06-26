@@ -28,11 +28,10 @@ public class CountingThreadFactory implements ThreadFactory {
 	private final String namePrefix;
 	private final AtomicInteger threadNumber = new AtomicInteger(1);
 
-	private ExtendedThreadFactory factory = (group, runnable, name) -> {
-		Thread t = Thread.ofVirtual().unstarted(runnable);
-		t.setName(name);
-		return t;
-	};
+	// Please do not change this to a virtual thread factory
+	// As of today (26.6.25) virtual threads are dangerous and can cause deadlocks
+	// Their usage should be well thought out, not default
+	private ExtendedThreadFactory factory = Thread::new;
 
 	public CountingThreadFactory(String prefix) {
 		this.group = defaultGroup();
